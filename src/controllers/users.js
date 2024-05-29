@@ -24,7 +24,12 @@ module.exports.register = async(req,res)=>{
     const hash = await bcrypt.hash(password,10);
     
     try {
-        const user = await User.create({username,password:hash});
+        const [user,created] = await User.findOrCreate({
+            where:{username},
+            defaults:{username,password:hash}
+        });
+        if(!created)
+            return res.send({error:`User ${username} already exists. Please choose another username.`})
         user.password = undefined;
         res.cookie("token",generateToken({id:user.uuid}),{
             httpOnly: true,
