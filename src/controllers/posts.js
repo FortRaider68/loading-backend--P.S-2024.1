@@ -1,4 +1,12 @@
+const { Sequelize } = require("sequelize");
 const Post = require("../models/post");
+const connection = require("../database/connection");
+
+const SQL_QUERY_ALL_POSTS = `
+SELECT posts.*, created_by.username AS createdBy, updated_by.username AS updatedBy
+FROM posts 
+JOIN users created_by ON posts.created_by=created_by.uuid
+LEFT JOIN users updated_by ON posts.updated_by=updated_by.uuid`
 
 function validateUserInput(params,res){
     const {title, description, type} = params;
@@ -11,7 +19,7 @@ function validateUserInput(params,res){
 }
 
 module.exports.allPosts = async(req,res)=>{
-    const posts = await Post.findAll();
+    const [posts] = await connection.query(SQL_QUERY_ALL_POSTS);
     if(posts.length == 0)
         return res.status(200).send({result:"No posts found."})
     res.status(200).send(posts);
@@ -20,10 +28,12 @@ module.exports.allPosts = async(req,res)=>{
 module.exports.postsPaginated = async(req,res)=>{
     const {pageNumber} = req.params;
     
-    const posts = await Post.findAll({
-        limit:process.env.POSTS_PER_PAGE,
-        offset:process.env.POSTS_PER_PAGE*(parseInt(pageNumber)-1)
-    });
+    const posts = await connection.query(SQL_QUERY_ALL_POSTS.concat("LIMIT :limit OFFSET :offset"),{
+        replacements:{
+            limit:process.env.POSTS_PER_PAGE,
+            offset:process.env.POSTS_PER_PAGE*(parseInt(pageNumber)-1)
+        }
+    })
     if(posts.length == 0)
         return res.send({message:"No more posts founded."});
     res.status(200).send(posts);
@@ -32,9 +42,9 @@ module.exports.postsPaginated = async(req,res)=>{
 module.exports.getPostById = async(req,res)=>{
     const {id} = req.query;
     try {
-        const post = await Post.findOne({where:{
-            uuid:id
-        }})
+        const [post] = await connection.query(SQL_QUERY_ALL_POSTS.concat(" WHERE posts.uuid=:id"),{
+            replacements:{id}
+        })
         if(!post)
             return res.status(404).send({error:"Post not found."});
         res.status(200).send({post});
@@ -45,7 +55,7 @@ module.exports.getPostById = async(req,res)=>{
 }
 
 module.exports.create = async(req,res) =>{
-    const {title, description, type, image_url} = req.body;
+    const {userID,title, description, type, image_url} = req.body;
     validateUserInput({title,description,type},res);
     try {
         const post = await Post.create({
@@ -53,7 +63,7 @@ module.exports.create = async(req,res) =>{
             description,
             post_type:type,
             image_url,
-            created_by: "6f5f30fd-1a76-489c-962d-65a046d7630e"
+            created_by: userID
         })
         return res.status(200).send({post});
     } catch (error) {
@@ -63,13 +73,18 @@ module.exports.create = async(req,res) =>{
 } 
 
 module.exports.edit = async(req,res)=>{
-    const {id,title, description, type, image_url} = req.body;
+    const {userID,id,title, description, type, image_url} = req.body;
     if(!id)
         return res.send({error:"Id not provided."});
     validateUserInput({title,description,type},res);
     try {
-        const [status] = await Post.update({title, description, type, image_url},{where:{uuid:id}});
-        console.log(status)
+        const [status] = await Post.update({
+            title, 
+            description, 
+            type, 
+            image_url,
+            updated_by:userID
+        },{where:{uuid:id}});
         if(!status ){
             res.status(404).send({message:"Post not found"});
         }

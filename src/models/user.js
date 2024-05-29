@@ -16,6 +16,7 @@ const User = connection.define('users',{
         type:Sequelize.STRING(256),
         allowNull:false
     }
-},{timestamps:true});
+},{timestamps:true,tableName:"users"});
+
 
 module.exports = User;

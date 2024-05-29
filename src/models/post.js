@@ -30,12 +30,21 @@ const Post = connection.define('posts',{
     },
     created_by:{
         type: Sequelize.UUID,
-        allowNull:false
+        references:{
+            model: "users",
+            key: "uuid"
+        }
     },
-    update_by:{
-        type: Sequelize.UUID
+    updated_by:{
+        type: Sequelize.UUID,
+        allowNull:true,
+        references:{
+            model: "users",
+            key: "uuid"
+        }
     }
    
-}, {timestamps:true})
+}, {timestamps:true,tableName:"posts"})
+
 
 module.exports = Post;
