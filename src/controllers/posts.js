@@ -28,7 +28,7 @@ module.exports.allPosts = async(req,res)=>{
 module.exports.postsPaginated = async(req,res)=>{
     const {pageNumber} = req.params;
     
-    const posts = await connection.query(SQL_QUERY_ALL_POSTS.concat(" LIMIT :limit OFFSET :offset"),{
+    const [posts] = await connection.query(SQL_QUERY_ALL_POSTS.concat(" LIMIT :limit OFFSET :offset"),{
         replacements:{
             limit:process.env.POSTS_PER_PAGE,
             offset:process.env.POSTS_PER_PAGE*(parseInt(pageNumber)-1)
